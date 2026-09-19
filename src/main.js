@@ -5,7 +5,11 @@
   const $ = (sel) => document.querySelector(sel);
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
-  // Settings Encryption
+  // Reversible encoding only. This is NOT encryption: never rely on it to protect a secret.
+  const { escapeHtml, safeColor } = globalThis.BBSecurity;
+  // Secrets (OBS password, Twitch token) live in sessionStorage only: gone when the tab closes.
+  const secretGet = (k) => { try { return sessionStorage.getItem(k) || ''; } catch (e) { return ''; } };
+  const secretSet = (k, v) => { try { sessionStorage.setItem(k, v); } catch (e) { /* storage blocked */ } };
   function encryptStr(text) {
     if (!text) return "";
     try { return btoa(encodeURIComponent(text)); } catch(e) { return ""; }
@@ -149,9 +153,12 @@
     // Load Settings
     if (localStorage.getItem('bb_obsAddress')) $('#obs-address').value = localStorage.getItem('bb_obsAddress');
     if (localStorage.getItem('bb_obsPort')) $('#obs-port').value = localStorage.getItem('bb_obsPort');
-    if (localStorage.getItem('bb_obsPassword')) $('#obs-password').value = decryptStr(localStorage.getItem('bb_obsPassword'));
+    // Earlier versions kept these in localStorage; remove those copies.
+    localStorage.removeItem('bb_obsPassword');
+    localStorage.removeItem('bb_twitchToken');
+    if (secretGet('bb_obsPassword')) $('#obs-password').value = secretGet('bb_obsPassword');
     if (localStorage.getItem('bb_twitchChannel')) $('#twitch-channel').value = localStorage.getItem('bb_twitchChannel');
-    if (localStorage.getItem('bb_twitchToken')) $('#twitch-token').value = decryptStr(localStorage.getItem('bb_twitchToken'));
+    if (secretGet('bb_twitchToken')) $('#twitch-token').value = secretGet('bb_twitchToken');
 
     resize();
     
@@ -291,7 +298,7 @@
 
     localStorage.setItem('bb_obsAddress', address);
     localStorage.setItem('bb_obsPort', port);
-    localStorage.setItem('bb_obsPassword', encryptStr(password));
+    secretSet('bb_obsPassword', password);
 
     try {
       status.textContent = "CONNECTING...";
@@ -335,7 +342,7 @@
     const token = $('#twitch-token').value;
     const status = $('#twitch-status');
     localStorage.setItem('bb_twitchChannel', channel);
-    localStorage.setItem('bb_twitchToken', encryptStr(token));
+    secretSet('bb_twitchToken', token);
 
     if (!token) {
       status.textContent = "NEED TOKEN";
@@ -418,10 +425,10 @@
     div.className = 'msg msg-twitch';
     div.innerHTML = `
       <div class="msg-header">
-        <span class="msg-name" style="color:${msg.color}">👁 ${msg.character.toUpperCase()}</span>
+        <span class="msg-name" style="color:${safeColor(msg.color)}">👁 ${escapeHtml(msg.character.toUpperCase())}</span>
         <span>${msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
       </div>
-      <div class="msg-text">${msg.text}</div>
+      <div class="msg-text">${escapeHtml(msg.text)}</div>
     `;
     container.appendChild(div);
     container.scrollTop = container.scrollHeight;
@@ -453,10 +460,10 @@
     div.className = 'msg';
     div.innerHTML = `
       <div class="msg-header">
-        <span class="msg-name" style="color:${char.color}">${msg.character.toUpperCase()}</span>
+        <span class="msg-name" style="color:${char.color}">${escapeHtml(msg.character.toUpperCase())}</span>
         <span>${msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
       </div>
-      <div class="msg-text">${msg.text}</div>
+      <div class="msg-text">${escapeHtml(msg.text)}</div>
     `;
     container.appendChild(div);
     container.scrollTop = container.scrollHeight;
@@ -469,10 +476,10 @@
     div.className = 'msg msg-internal';
     div.innerHTML = `
       <div class="msg-header">
-        <span class="msg-name" style="color:var(--internal)">${msg.character.toUpperCase()}</span>
+        <span class="msg-name" style="color:var(--internal)">${escapeHtml(msg.character.toUpperCase())}</span>
         <span>${msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
       </div>
-      <div class="msg-text">${msg.text}</div>
+      <div class="msg-text">${escapeHtml(msg.text)}</div>
     `;
     container.appendChild(div);
     container.scrollTop = container.scrollHeight;
